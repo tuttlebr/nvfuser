@@ -1,0 +1,30 @@
+services:
+  pytorch-compiler:
+    build:
+      args:
+        - BASE_IMAGE_NAME=ghcr.io/pytorch/pytorch-nightly
+    image: pytorch-compiler
+    environment:
+      - TORCHINDUCTOR_TRACE=1
+    shm_size: 16g
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    runtime: nvidia
+    ports:
+      - 8888:8888
+    entrypoint:
+      [
+        "jupyter",
+        "lab",
+        "--ServerApp.ip=0.0.0.0",
+        "--ServerApp.port=8888",
+        "--ServerApp.allow_root=True",
+        "--ServerApp.token=''",
+        "--ServerApp.password=''",
+        "--Application.log_level='CRITICAL'",
+      ]
+    volumes:
+      - type: bind
+        source: workspace
+        target: /workspace
