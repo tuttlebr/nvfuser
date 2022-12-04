@@ -6,24 +6,33 @@ services:
     image: pytorch-compiler
     environment:
       - TORCHINDUCTOR_TRACE=1
+      - TORCH_HOME=/workspace
     shm_size: 16g
     ulimits:
       memlock: -1
       stack: 67108864
     runtime: nvidia
-    ports:
-      - 8888:8888
-    entrypoint:
-      [
-        "jupyter",
-        "lab",
-        "--ServerApp.ip=0.0.0.0",
-        "--ServerApp.port=8888",
-        "--ServerApp.allow_root=True",
-        "--ServerApp.token=''",
-        "--ServerApp.password=''",
-        "--Application.log_level='CRITICAL'",
-      ]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           device_ids: ["1"]
+    #           capabilities: [gpu]
+    # ports:
+    #   - 8888:8888
+    # entrypoint:
+    #   [
+    #     "jupyter",
+    #     "lab",
+    #     "--ServerApp.ip=0.0.0.0",
+    #     "--ServerApp.port=8888",
+    #     "--ServerApp.allow_root=True",
+    #     "--ServerApp.token=''",
+    #     "--ServerApp.password=''",
+    #     "--Application.log_level='CRITICAL'",
+    #   ]
+    entrypoint: ["python", "/workspace/run.py"]
     volumes:
       - type: bind
         source: workspace
