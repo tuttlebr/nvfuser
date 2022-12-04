@@ -99,7 +99,7 @@ logger.info("Compiling torch model...")
 opt_model = torch.compile(
     model=model,
     backend="ts_nvfuser_ofi",
-    # mode="max-autotune",
+    mode="max-autotune",
 )
 
 
