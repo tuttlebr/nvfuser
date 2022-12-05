@@ -11,8 +11,8 @@ Results running resnet18 locally. Your results will vary, but hopefully have sim
 
 ```sh
 Using cache found in /workspace/hub/pytorch_vision_v0.10.0
-2022-12-04 07:03:13,534 Compiling torch model...
-Running Torch Default Model : 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1000/1000 [00:07<00:00, 126.24it/s]
-Running Torch Compiled Model: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1000/1000 [00:06<00:00, 161.18it/s]
-2022-12-04 07:03:29,869 Runtime diff is ~24.319% with a batch size of 32 for 1,000 iterations.
+2022-12-05 00:23:21,773 Compiling torch model...
+Running Torch Default Model : 100%|█████████████████████████| 1000/1000 [00:08<00:00, 124.02it/s]
+Running Torch Compiled Model: 100%|█████████████████████████| 1000/1000 [00:05<00:00, 198.83it/s]
+2022-12-05 00:23:48,428 Runtime diff is ~46.355% with a batch size of 32 for 1,000 iterations.
 ```
