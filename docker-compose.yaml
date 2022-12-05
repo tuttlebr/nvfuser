@@ -2,11 +2,12 @@ services:
   pytorch-compiler:
     build:
       args:
-        - BASE_IMAGE_NAME=ghcr.io/pytorch/pytorch-nightly
+        - BASE_IMAGE_NAME=nvcr.io/nvidia/pytorch:22.11-py3
     image: pytorch-compiler
     environment:
-      - TORCHINDUCTOR_TRACE=1
+      - TORCHINDUCTOR_TRACE=0
       - TORCH_HOME=/workspace
+      - DEBIAN_FRONTEND=noninteractive
     shm_size: 16g
     ulimits:
       memlock: -1
@@ -32,7 +33,8 @@ services:
     #     "--ServerApp.password=''",
     #     "--Application.log_level='CRITICAL'",
     #   ]
-    entrypoint: ["python", "/workspace/run.py"]
+    entrypoint: ["python3", "/workspace/run.py"]
+    working_dir: /workspace
     volumes:
       - type: bind
         source: workspace

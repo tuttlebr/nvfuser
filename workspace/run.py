@@ -14,7 +14,7 @@ logging.basicConfig(format="%(asctime)s %(message)s")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-torch.set_float32_matmul_precision("high")
+# torch.set_float32_matmul_precision("high")
 torch.manual_seed(1)
 batch_size = 32
 iterations = 1000
@@ -98,7 +98,7 @@ model = torch.hub.load(
 logger.info("Compiling torch model...")
 opt_model = torch.compile(
     model=model,
-    backend="ts_nvfuser_ofi",
+    backend="torch2trt",
     mode="max-autotune",
 )
 
