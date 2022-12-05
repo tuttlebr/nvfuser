@@ -1,9 +1,6 @@
 ARG BASE_IMAGE_NAME
 FROM $BASE_IMAGE_NAME
 
-# RUN apt update \
-#     && apt install -y -q python3-pip git
-
 RUN pip3 install \
     jupyterlab \
     ipywidgets \

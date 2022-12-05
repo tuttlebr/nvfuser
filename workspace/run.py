@@ -1,69 +1,71 @@
-import torch
-import torch.nn as nn
-import torchvision.transforms as T
-from torchvision.io import read_image
-from torchvision.models import ResNet18_Weights
-
-from tqdm.auto import tqdm
-from time import time
-import json
 import logging
+import json
+from time import time
+from tqdm.auto import tqdm
+from torchvision.models import ResNet18_Weights
+from torchvision.io import read_image
+import torchvision.transforms as T
+import torch.nn as nn
+import torch
+import warnings
+warnings.filterwarnings(action='ignore', category=UserWarning)
 
 
 logging.basicConfig(format="%(asctime)s %(message)s")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# torch.set_float32_matmul_precision("high")
+torch.set_float32_matmul_precision("medium")
 torch.manual_seed(1)
-batch_size = 32
-iterations = 1000
+batch_size = 8
+iterations = 500
 backends = [
-    "ansor",
+    # "ansor",
     "aot_cudagraphs",
     "aot_eager",
-    "aot_inductor_debug",
-    "aot_ts",
-    "aot_ts_nvfuser",
-    "aot_ts_nvfuser_nodecomps",
+    # "aot_inductor_debug",
+    # "aot_ts",
+    # "aot_ts_nvfuser",
+    # "aot_ts_nvfuser_nodecomps",
     "cudagraphs",
     "cudagraphs_ts",
-    "cudagraphs_ts_ofi",
-    "dynamo_accuracy_minifier_backend",
-    "dynamo_minifier_backend",
+    # "cudagraphs_ts_ofi",
+    # "dynamo_accuracy_minifier_backend",
+    # "dynamo_minifier_backend",
     "eager",
-    "fx2trt",
-    "inductor",
-    "ipex",
+    # "fx2trt",
+    # "inductor",
+    # "ipex",
     "nnc",
     "nnc_ofi",
-    "nvprims_aten",
+    # "nvprims_aten",
     "nvprims_nvfuser",
     "ofi",
-    "onednn",
-    "onnx2tensorrt",
-    "onnx2tf",
-    "onnxrt",
-    "onnxrt_cpu",
-    "onnxrt_cpu_numpy",
-    "onnxrt_cuda",
-    "static_runtime",
-    "taso",
-    "tensorrt",
+    # "onednn",
+    # "onnx2tensorrt",
+    # "onnx2tf",
+    # "onnxrt",
+    # "onnxrt_cpu",
+    # "onnxrt_cpu_numpy",
+    # "onnxrt_cuda",
+    # "static_runtime",
+    # "taso",
+    # "tensorrt",
     "torch2trt",
-    "torchxla_trace_once",
-    "torchxla_trivial",
+    # "torchxla_trace_once",
+    # "torchxla_trivial",
     "ts",
     "ts_nvfuser",
     "ts_nvfuser_ofi",
-    "tvm",
-    "tvm_meta_schedule"]
+    # "tvm",
+    # "tvm_meta_schedule",
+]
 
 
 class Predictor(nn.Module):
     def __init__(self, resnet18):
         super().__init__()
-        self.resnet18 = resnet18.eval()
+        self.resnet18 = resnet18
         self.transforms = nn.Sequential(
             T.Resize(
                 [
@@ -93,24 +95,10 @@ model = torch.hub.load(
     model="resnet18",
     weights=ResNet18_Weights.DEFAULT,
     progress=False,
-)
-
-logger.info("Compiling torch model...")
-opt_model = torch.compile(
-    model=model,
-    backend="torch2trt",
-    mode="max-autotune",
-)
-
+).eval()
 
 with open("imagenet_class_index.json", "r") as labels_file:
     labels = json.load(labels_file)
-
-
-default_predictor = Predictor(model).to("cuda")
-
-torch._dynamo.config.suppress_errors = True
-opt_predictor = Predictor(opt_model).to("cuda")
 
 
 size = (800, 600)
@@ -119,13 +107,9 @@ dog1 = T.Resize(size=size)(dog1)
 batch = torch.stack([dog1] * batch_size).to("cuda")
 
 
+default_predictor = Predictor(model).to("cuda")
 default_predictor_result = default_predictor(batch)
 for i, pred in enumerate(default_predictor_result):
-    logger.debug(f"Prediction for Dog {i + 1}: {labels[str(pred.item())]}")
-
-
-opt_predictor_result = opt_predictor(batch)
-for i, pred in enumerate(opt_predictor_result):
     logger.debug(f"Prediction for Dog {i + 1}: {labels[str(pred.item())]}")
 
 default_start = time()
@@ -135,17 +119,42 @@ default_stop = time()
 default_runtime = default_stop - default_start
 
 
-opt_start = time()
-for i in tqdm(range(iterations), desc="Running Torch Compiled Model"):
-    opt_predictor(batch)
-opt_stop = time()
-opt_runtime = opt_stop - opt_start
+for backend in backends:
+    try:
+        logger.info("--- {} ---".format(backend))
+        opt_model = torch.compile(
+            model=model,
+            backend=backend,
+            mode="max-autotune",
+            fullgraph=True,
+        )
+        torch._dynamo.config.suppress_errors = True
+        opt_predictor = Predictor(opt_model).to("cuda")
+        opt_predictor_result = opt_predictor(batch)
+        for i, pred in enumerate(opt_predictor_result):
+            logger.debug(
+                f"Prediction for Dog {i + 1}: {labels[str(pred.item())]}")
 
+        opt_start = time()
+        for i in tqdm(
+                range(iterations),
+                desc="Running Torch Compiled Model"):
+            opt_predictor(batch)
+        opt_stop = time()
+        opt_runtime = opt_stop - opt_start
 
-logger.info(
-    "Runtime diff is ~{}% with a batch size of {:,} for {:,} iterations.".format(
-        pct_diff(
-            default_runtime,
-            opt_runtime),
-        batch_size,
-        iterations))
+        logger.info(
+            "Runtime diff is ~{}% with a batch size of {:,} for {:,} iterations.".format(
+                pct_diff(
+                    default_runtime,
+                    opt_runtime),
+                batch_size,
+                iterations))
+
+        torch._dynamo.reset()
+
+    except BaseException as e:
+        logger.info(
+            "{} backend did not complete successfully.".format(
+                backend))
+        torch._dynamo.reset()
